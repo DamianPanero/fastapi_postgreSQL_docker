@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql+asyncpg://usuario:password@db:5432/items_db
+      # postgresql+asyncpg es el formato que SQLAlchemy async necesita
+      # @db es el nombre del servicio de abajo — Docker lo resuelve como URL
+    depends_on:
+       db:
+         condition: service_healthy
+
+  db:
+    image: postgres:15
+    # imagen oficial de PostgreSQL — Docker la descarga sola
+    environment:
+      - POSTGRES_USER=usuario
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=items_db
+      # estas tres variables crean el usuario, contraseña y DB automáticamente
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # volumen persistente — los datos sobreviven aunque el container se detenga
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U usuario -d items_db"]
+      # pg_isready es un comando de PostgreSQL que verifica si está listo
+      interval: 5s
+      # chequea cada 5 segundos
+      retries: 5
+      # intenta 5 veces antes de declarar fallo
+volumes:
+  postgres_data:
+  # le dice a Docker que gestione este volumen
